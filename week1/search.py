@@ -27,6 +27,7 @@ def process_filters(filters_input):
         applied_filters += "&filter.name={}&{}.type={}&{}.displayName={}".format(filter, filter, type, filter,
                                                                                  display_name)
         #TODO: IMPLEMENT AND SET filters, display_filters and applied_filters.
+        display_filters.append(display_name)
         # filters get used in create_query below.  display_filters gets used by display_filters.jinja2 and applied_filters gets used by aggregations.jinja2 (and any other links that would execute a search.)
         if type == "range":
             pass
@@ -74,7 +75,8 @@ def query():
         query_obj = create_query("*", [], sort, sortDir)
 
     print("query obj: {}".format(query_obj))
-    response = None   # TODO: Replace me with an appropriate call to OpenSearch
+    #response = None  ## TODO: Replace me with an appropriate call to OpenSearch
+    response = opensearch.search(body=query_obj, index='bbuy_products', doc_type="_doc")
     # Postprocess results here if you so desire
 
     #print(response)
@@ -88,13 +90,64 @@ def query():
 
 def create_query(user_query, filters, sort="_score", sortDir="desc"):
     print("Query: {} Filters: {} Sort: {}".format(user_query, filters, sort))
+    compQuery = [{
+        "multi_match":{
+            "fields": ['name', "shortDescription", "longDescription", "department", 'manufacturer'],
+            "query": user_query,
+            "type": "most_fields"
+        }
+    },
+    {
+        "multi_match":{
+            "fields": ['name^50', "shortDescription^50", "longDescription^50", "department"],
+            "query": user_query,
+            "type": "phrase"
+        }
+    },
+    {
+        "match":{
+            "name.word_bigram":{
+                "query": user_query,
+                "boost": 2000
+            }
+        }
+    }
+    ]
     query_obj = {
         'size': 10,
         "query": {
-            "match_all": {} # Replace me with a query that both searches and filters
+            "bool":{
+                "should":compQuery,
+                "minimum_should_match":1
+            }
         },
+        # "query": {
+        #     "match_all": {} # Replace me with a query that both searches and filters
+        # },
         "aggs": {
-            #TODO: FILL ME IN
+            "regularPrice":{
+                "range":{
+                    "field": "regularPrice",
+                    "ranges":  [
+                        {
+                            "from":0,
+                            "to":250
+                        },
+                        {
+                            "from":250,
+                            "to":1000,
+                        },
+                        {
+                            "from":1000
+                        }
+                    ]
+                },
+                "missing_images":{
+                    "missing":{
+                        "field": "image"
+                    }
+                }
+            }
         }
     }
     return query_obj
