@@ -7,12 +7,13 @@ def get_opensearch():
         # Implement a client connection to OpenSearch so that the rest of the application can communicate with OpenSearch
         g.opensearch = None
         host = 'localhost'
-        port = 9200
+        port = '9200'
+        auth = ('admin', 'admin')
 
         g.opensearch = OpenSearch(
-            hosts=[{'host': host, 'port':port}]
+            hosts=[{'host': host, 'port':port}],
             http_compress=True,
-            http_auth=('admin', 'admin'),
+            http_auth=auth,
             use_ssl=True,
             verify_certs=False,
             ssl_assert_hostname=False,
