@@ -14,7 +14,7 @@
         },
         "name" : {
           "type" : "text",
-          "analyzer": "standard",
+          "analyzer": "english",
           "fields" : {
             "keyword" : {
               "type" : "keyword",
@@ -33,7 +33,7 @@
         },
         "shortDescription" : {
           "type" : "text",
-          "analyzer": "standard",
+          "analyzer": "english",
           "fields" : {
             "keyword" : {
               "type" : "keyword",
@@ -43,7 +43,7 @@
         },
         "longDescription" : {
           "type" : "text",
-          "analyzer": "standard",
+          "analyzer": "english",
           "fields" : {
             "keyword" : {
               "type" : "keyword",
