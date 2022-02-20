@@ -21,3 +21,5 @@ def get_opensearch():
         )
 
     return g.opensearch
+
+
