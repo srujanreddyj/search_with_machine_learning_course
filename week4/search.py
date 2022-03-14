@@ -4,13 +4,24 @@
 from flask import (
     Blueprint, redirect, render_template, request, url_for, current_app
 )
-
+import json
 from week4.opensearch import get_opensearch
 
 import week4.utilities.query_utils as qu
 import week4.utilities.ltr_utils as lu
 
 bp = Blueprint('search', __name__, url_prefix='/search')
+
+def clean_query(query, simple=False):
+    if simple:
+        return query.strip().lower()
+    words = word_tokenize(query)
+    words = [stemmer.stem(word.lower()) for word in words if (word.isalnum())]
+    if len(words) == 0:
+        return ""
+    else:
+        clean_query = " ".join(words)
+    return clean_query
 
 
 # Process the filters requested by the user and return a tuple that is appropriate for use in: the query, URLs displaying the filter and the display of the applied filters
@@ -57,8 +68,16 @@ def process_filters(filters_input):
     return filters, display_filters, applied_filters
 
 def get_query_category(user_query, query_class_model):
-    print("IMPLEMENT ME: get_query_category")
-    return None
+    # print("IMPLEMENT ME: get_query_category")
+    categories = []
+    user_query = clean_query(user_query, simple=True)
+    predicted_cats, confidence = query_class_model.predict(user_query, 5)
+    categories += [
+        (category.replace("__label__", ""), confidence)
+        for category, confidence in zip(predicted_cats, confidence)
+    ]
+    return categories
+
 
 
 @bp.route('/query', methods=['GET', 'POST'])
@@ -121,7 +140,7 @@ def query():
             explain = True
         if filters_input:
             (filters, display_filters, applied_filters) = process_filters(filters_input)
-        model = request.args.get("model", "simiple")
+        model = request.args.get("model", "simple")
         if model == "simple_LTR":
             query_obj = qu.create_simple_baseline(user_query, click_prior, filters, sort, sortDir, size=500)
             query_obj = lu.create_rescore_ltr_query(user_query, query_obj, click_prior, ltr_model_name, ltr_store_name, rescore_size=500)
@@ -137,9 +156,22 @@ def query():
 
     query_class_model = current_app.config["query_model"]
     query_category = get_query_category(user_query, query_class_model)
-    if query_category is not None:
-        print("IMPLEMENT ME: add this into the filters object so that it gets applied at search time.  This should look like your `term` filter from week 1 for department but for categories instead")
-    #print("query obj: {}".format(query_obj))
+
+    print('predicted_categories', query_category)
+    print('user_query', user_query)
+
+    if query_category and user_query != '*':
+        print('ADDING CATEGORIES FILTER')
+        query_obj['query']['bool']['filter'] = [{
+            'terms': {
+                'categoryPathIds': query_category
+            }
+        }]
+    
+    if query_category is not None  and len(query_category) > 0:
+        print("IMPLEMENT ME: add this into the filters object so that it gets applied at search time.  This should look like your `term` filter from week 1 for department but for categories instead")    
+    
+    print("query obj: {}".format(query_obj))
     response = opensearch.search(body=query_obj, index=current_app.config["index_name"], explain=explain)
     # Postprocess results here if you so desire
 

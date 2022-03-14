@@ -7,6 +7,7 @@ import csv
 
 # Useful if you want to perform stemming.
 import nltk
+from nltk.tokenize import RegexpTokenizer
 stemmer = nltk.stem.PorterStemmer()
 
 categories_file_name = r'/workspace/datasets/product_data/categories/categories_0001_abcat0010000_to_pcmcat99300050000.xml'
@@ -49,8 +50,42 @@ df = pd.read_csv(queries_file_name)[['category', 'query']]
 df = df[df['category'].isin(categories)]
 
 # IMPLEMENT ME: Convert queries to lowercase, and optionally implement other normalization, like stemming.
+def transform(q):
+    q = q.lower()
+    tokenizer = RegexpTokenizer(r'\w+')
+    parts = tokenizer.tokenize(q)
+    parts = [stemmer.stem(p) for p in parts]
+    parts = [p.strip() for p in parts]
+    return " ".join(parts)
+
+
+def get_parent(cat, leaf_df):
+    if cat == "cat00000":
+        return "cat00000"
+    else:
+        return parents_df[parents_df["category"]==cat]["parent"].iloc[0]
+
+df["query"] = df['query'].apply(transform)
+
 
 # IMPLEMENT ME: Roll up categories to ancestors to satisfy the minimum number of queries per category.
+if min_queries > 1:
+    grp_df = df.groupby(['category']).size().to_frame('size')
+
+
+    rem_prune_count = len(grp_df[grp_df["size"] < min_queries])
+
+    while rem_prune_count > 0:
+        items = grp_df[grp_df["size"] < min_queries]
+        ct = 0
+        for i,row in items.iterrows():
+            df["category"].replace({i:get_parent(i, parents_df)}, inplace=True)
+            print(f"Replacing for {i} #{ct}/{rem_prune_count}")
+            ct = ct + 1
+        grp_df = df.groupby(['category']).size().to_frame('size')
+        rem_prune_count = len(grp_df[grp_df["size"] < min_queries])
+        print(f"Remaining to prune {rem_prune_count}")
+        print(f"Unique Categories now {len(grp_df)}")
 
 # Create labels in fastText format.
 df['label'] = '__label__' + df['category']
