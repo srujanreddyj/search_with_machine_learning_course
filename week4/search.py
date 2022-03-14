@@ -71,10 +71,10 @@ def get_query_category(user_query, query_class_model):
     # print("IMPLEMENT ME: get_query_category")
     categories = []
     user_query = clean_query(user_query, simple=True)
-    predicted_cats, confidence = query_class_model.predict(user_query, 5)
+    predicted_categories, confidence = query_class_model.predict(user_query, 5)
     categories += [
         (category.replace("__label__", ""), confidence)
-        for category, confidence in zip(predicted_cats, confidence)
+        for category, confidence in zip(predicted_categories, confidence)
     ]
     return categories
 
