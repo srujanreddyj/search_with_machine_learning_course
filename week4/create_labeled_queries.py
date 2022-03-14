@@ -72,19 +72,18 @@ df["query"] = df['query'].apply(transform)
 if min_queries > 1:
     grp_df = df.groupby(['category']).size().to_frame('size')
 
+    prune_count_left = len(grp_df[grp_df["size"] < min_queries])
 
-    rem_prune_count = len(grp_df[grp_df["size"] < min_queries])
-
-    while rem_prune_count > 0:
+    while prune_count_left > 0:
         items = grp_df[grp_df["size"] < min_queries]
-        ct = 0
+        c = 0
         for i,row in items.iterrows():
             df["category"].replace({i:get_parent(i, parents_df)}, inplace=True)
-            print(f"Replacing for {i} #{ct}/{rem_prune_count}")
-            ct = ct + 1
+            print(f"Replacing for {i} #{ct}/{prune_count_left}")
+            c = c + 1
         grp_df = df.groupby(['category']).size().to_frame('size')
-        rem_prune_count = len(grp_df[grp_df["size"] < min_queries])
-        print(f"Remaining to prune {rem_prune_count}")
+        prune_count_left = len(grp_df[grp_df["size"] < min_queries])
+        print(f"Remaining to prune {prune_count_left}")
         print(f"Unique Categories now {len(grp_df)}")
 
 # Create labels in fastText format.
